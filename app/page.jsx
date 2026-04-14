@@ -6,6 +6,7 @@ import ActivityList from '@/components/respiro/ActivityList'
 import ActivityHistory from '@/components/respiro/ActivityHistory'
 import FocusTimer from '@/components/respiro/FocusTimer'
 import ActivityForm from '@/components/respiro/ActivityForm'
+import CheckCompletionModal from '@/components/respiro/CheckCompletionModal'
 import { useNotificationScheduler } from '@/hooks/useNotificationScheduler'
 import {
   Dialog,
@@ -19,26 +20,18 @@ const STORAGE_KEY = 'respiro_activities'
 const HISTORY_KEY = 'respiro_history'
 
 export default function Home() {
-  // Estado das atividades cadastradas
   const [activities, setActivities] = useState([])
-
-  // Estado do histórico de logs
   const [historyLogs, setHistoryLogs] = useState([])
-
-  // Estado do modo foco (atividade ativa no timer)
   const [focusActivity, setFocusActivity] = useState(null)
-
-  // Estado para rastrear se estamos executando uma atividade atrasada
   const [recoveryLogId, setRecoveryLogId] = useState(null)
-
-  // Estado da aba ativa: 'activities' ou 'history'
   const [activeTab, setActiveTab] = useState('activities')
-
-  // Controle do modal de cadastro/edição
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingActivity, setEditingActivity] = useState(null)
 
-  // Carrega atividades do localStorage na montagem do componente
+  // Atividade CHECK aguardando confirmação via modal (notificação push)
+  const [checkActivity, setCheckActivity] = useState(null)
+
+  // Carrega dados do localStorage na montagem
   useEffect(() => {
     const storedActivities = localStorage.getItem(STORAGE_KEY)
     if (storedActivities) {
@@ -59,49 +52,93 @@ export default function Home() {
     }
   }, [])
 
-  // Persiste atividades no localStorage sempre que mudarem
+  // Persiste atividades no localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(activities))
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(activities))
+    } catch (e) {
+      console.error('Não foi possível salvar as atividades. Espaço de armazenamento do navegador cheio.', e)
+    }
   }, [activities])
 
-  // Persiste histórico no localStorage sempre que mudar
+  // Persiste histórico no localStorage
   useEffect(() => {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(historyLogs))
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(historyLogs))
+    } catch (e) {
+      console.error('Não foi possível salvar o registro. Espaço de armazenamento do navegador cheio.', e)
+    }
   }, [historyLogs])
 
-  // Fecha o modal e limpa o estado de edição
+  // Fecha o modal de formulário e limpa o estado de edição
   const closeForm = useCallback(() => {
     setIsFormOpen(false)
     setEditingActivity(null)
   }, [])
 
-  // Função para adicionar nova atividade
+  // Adiciona nova atividade
   const handleAddActivity = useCallback((newActivity) => {
-    const activityWithId = {
-      ...newActivity,
-      id: Date.now().toString(),
-    }
-    setActivities(prev => [...prev, activityWithId])
+    setActivities(prev => [...prev, { ...newActivity, id: Date.now().toString() }])
     closeForm()
   }, [closeForm])
 
-  // Função para editar atividade existente
+  // Edita atividade existente
   const handleEditActivity = useCallback((updatedActivity) => {
     setActivities(prev => prev.map(a => a.id === updatedActivity.id ? updatedActivity : a))
     closeForm()
   }, [closeForm])
 
-  // Função para excluir atividade
+  // Exclui atividade
   const handleDeleteActivity = useCallback((id) => {
-    setActivities(prev => prev.filter(activity => activity.id !== id))
+    setActivities(prev => prev.filter(a => a.id !== id))
   }, [])
 
-  // Função para iniciar o modo foco
+  // Inicia o modo foco (atividades TIMER)
   const handleStartFocus = useCallback((activity) => {
     setFocusActivity(activity)
   }, [])
 
-  // Função para iniciar execução de atividade atrasada (MISSED)
+  // Abre modal de confirmação (atividades CHECK via notificação push)
+  const handleShowCheckModal = useCallback((activity) => {
+    setCheckActivity(activity)
+  }, [])
+
+  // Usuário confirma conclusão no modal CHECK
+  const handleCheckConfirm = useCallback(() => {
+    if (!checkActivity) return
+    const newLog = {
+      id: Date.now().toString(),
+      activityId: checkActivity.id,
+      activityName: checkActivity.name,
+      type: 'CHECK',
+      date: new Date().toISOString(),
+      status: 'DONE',
+      duration: null,
+    }
+    setHistoryLogs(prev => [newLog, ...prev])
+    setCheckActivity(null)
+  }, [checkActivity])
+
+  // Usuário rejeita ou fecha o modal CHECK
+  const handleCheckDismiss = useCallback(() => {
+    setCheckActivity(null)
+  }, [])
+
+  // Clique direto no botão "Concluir" do card CHECK (sem modal)
+  const handleCheckComplete = useCallback((activity) => {
+    const newLog = {
+      id: Date.now().toString(),
+      activityId: activity.id,
+      activityName: activity.name,
+      type: 'CHECK',
+      date: new Date().toISOString(),
+      status: 'DONE',
+      duration: null,
+    }
+    setHistoryLogs(prev => [newLog, ...prev])
+  }, [])
+
+  // Inicia execução de atividade TIMER atrasada (MISSED → FocusTimer)
   const handleRecoverMissed = useCallback((logId, activityId) => {
     const activity = activities.find(a => a.id === activityId)
     if (activity) {
@@ -110,7 +147,16 @@ export default function Home() {
     }
   }, [activities])
 
-  // Função para finalizar o modo foco
+  // Conclui atividade CHECK atrasada no histórico (MISSED → DONE)
+  const handleCompleteMissedCheck = useCallback((logId) => {
+    setHistoryLogs(prev => prev.map(log =>
+      log.id === logId && log.status === 'MISSED'
+        ? { ...log, status: 'DONE', date: new Date().toISOString() }
+        : log
+    ))
+  }, [])
+
+  // Finaliza o modo foco
   const handleEndFocus = useCallback((completed = false) => {
     if (completed && focusActivity) {
       if (recoveryLogId) {
@@ -125,6 +171,7 @@ export default function Home() {
           id: Date.now().toString(),
           activityId: focusActivity.id,
           activityName: focusActivity.name,
+          type: focusActivity.type ?? 'TIMER',
           date: new Date().toISOString(),
           status: 'COMPLETED',
           duration: focusActivity.duration,
@@ -137,15 +184,16 @@ export default function Home() {
     setFocusActivity(null)
   }, [focusActivity, recoveryLogId])
 
-  // Função para adicionar log de MISSED (chamada pelo hook)
+  // Cria log MISSED para atividades que perderam a janela (chamado pelo hook)
   const handleAddMissedLog = useCallback((activity, date) => {
     const newLog = {
       id: Date.now().toString() + '_' + activity.id,
       activityId: activity.id,
       activityName: activity.name,
+      type: activity.type ?? 'TIMER',
       date: date,
       status: 'MISSED',
-      duration: activity.duration,
+      duration: activity.duration ?? null,
     }
     setHistoryLogs(prev => {
       const dateStr = new Date(date).toDateString()
@@ -158,10 +206,16 @@ export default function Home() {
     })
   }, [])
 
-  // Hook customizado para agendar notificações aleatórias
-  useNotificationScheduler(activities, handleStartFocus, handleAddMissedLog, historyLogs, focusActivity)
+  useNotificationScheduler(
+    activities,
+    handleStartFocus,
+    handleAddMissedLog,
+    historyLogs,
+    focusActivity,
+    handleShowCheckModal,
+  )
 
-  // Se estiver no modo foco, renderiza apenas o timer
+  // Modo foco — tela cheia exclusiva
   if (focusActivity) {
     return (
       <FocusTimer
@@ -172,7 +226,6 @@ export default function Home() {
     )
   }
 
-  // Tela principal com lista de atividades
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
@@ -188,7 +241,6 @@ export default function Home() {
                 Gerencie suas pausas e hobbies
               </p>
             </div>
-            {/* Botão Nova Atividade no header */}
             <button
               onClick={() => setIsFormOpen(true)}
               className="ml-auto flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
@@ -241,11 +293,13 @@ export default function Home() {
               setEditingActivity(activity)
               setIsFormOpen(true)
             }}
+            onCheckComplete={handleCheckComplete}
           />
         ) : (
           <ActivityHistory
             logs={historyLogs}
             onRecoverMissed={handleRecoverMissed}
+            onCompleteMissedCheck={handleCompleteMissedCheck}
           />
         )}
       </div>
@@ -271,6 +325,14 @@ export default function Home() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Modal de confirmação para atividades CHECK (notificação push) */}
+      <CheckCompletionModal
+        open={!!checkActivity}
+        activity={checkActivity}
+        onConfirm={handleCheckConfirm}
+        onDismiss={handleCheckDismiss}
+      />
     </main>
   )
 }

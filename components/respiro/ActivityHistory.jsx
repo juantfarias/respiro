@@ -3,19 +3,20 @@
 import { CheckCircle, XCircle, PlayCircle, Calendar, Clock } from 'lucide-react'
 
 /**
- * Componente para exibir o histórico de atividades realizadas e perdidas
- * 
+ * Componente para exibir o histórico de atividades realizadas e perdidas.
+ *
  * @param {Array} logs - Lista de logs de atividades
- * @param {Function} onRecoverMissed - Callback para executar atividade atrasada
+ * @param {Function} onRecoverMissed - Callback para executar atividade TIMER atrasada (logId, activityId)
+ * @param {Function} onCompleteMissedCheck - Callback para concluir atividade CHECK atrasada (logId)
  */
-export default function ActivityHistory({ logs, onRecoverMissed }) {
+export default function ActivityHistory({ logs, onRecoverMissed, onCompleteMissedCheck }) {
   // Formata a data para exibição
   const formatDate = (dateString) => {
     const date = new Date(dateString)
     const today = new Date()
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
-    
+
     if (date.toDateString() === today.toDateString()) {
       return 'Hoje'
     } else if (date.toDateString() === yesterday.toDateString()) {
@@ -28,7 +29,7 @@ export default function ActivityHistory({ logs, onRecoverMissed }) {
       })
     }
   }
-  
+
   // Formata o horário para exibição
   const formatTime = (dateString) => {
     const date = new Date(dateString)
@@ -37,12 +38,15 @@ export default function ActivityHistory({ logs, onRecoverMissed }) {
       minute: '2-digit'
     })
   }
-  
+
+  // Retorna true se o log está num estado de "sucesso" (realizado)
+  const isDone = (log) => log.status === 'COMPLETED' || log.status === 'DONE'
+
   // Ordena logs do mais recente para o mais antigo
-  const sortedLogs = [...logs].sort((a, b) => 
+  const sortedLogs = [...logs].sort((a, b) =>
     new Date(b.date).getTime() - new Date(a.date).getTime()
   )
-  
+
   // Agrupa logs por data
   const groupedLogs = sortedLogs.reduce((groups, log) => {
     const dateKey = new Date(log.date).toDateString()
@@ -80,64 +84,79 @@ export default function ActivityHistory({ logs, onRecoverMissed }) {
               {formatDate(dayLogs[0].date)}
             </h3>
           </div>
-          
+
           {/* Lista de logs do dia */}
           <div className="space-y-2">
-            {dayLogs.map((log) => (
-              <div
-                key={log.id}
-                className={`flex items-center justify-between rounded-lg border p-4 transition-colors ${
-                  log.status === 'COMPLETED'
-                    ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
-                    : 'border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/30'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  {/* Ícone de status */}
-                  {log.status === 'COMPLETED' ? (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
-                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    </div>
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/50">
-                      <XCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                    </div>
-                  )}
-                  
-                  {/* Informações da atividade */}
-                  <div>
-                    <h4 className="font-medium text-foreground">
-                      {log.activityName}
-                    </h4>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatTime(log.date)}
-                      </span>
-                      <span>{log.duration} min</span>
-                      <span className={`font-medium ${
-                        log.status === 'COMPLETED' 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-orange-600 dark:text-orange-400'
-                      }`}>
-                        {log.status === 'COMPLETED' ? 'Realizado' : 'Perdido'}
-                      </span>
+            {dayLogs.map((log) => {
+              const logType = log.type ?? 'TIMER'
+              const done = isDone(log)
+
+              return (
+                <div
+                  key={log.id}
+                  className={`flex items-center justify-between rounded-lg border p-4 transition-colors ${
+                    done
+                      ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
+                      : 'border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Ícone de status */}
+                    {done ? (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
+                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/50">
+                        <XCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                      </div>
+                    )}
+
+                    {/* Informações da atividade */}
+                    <div>
+                      <h4 className="font-medium text-foreground">
+                        {log.activityName}
+                      </h4>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {formatTime(log.date)}
+                        </span>
+                        {log.duration && <span>{log.duration} min</span>}
+                        <span className={`font-medium ${
+                          done
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-orange-600 dark:text-orange-400'
+                        }`}>
+                          {done ? 'Realizado' : 'Perdido'}
+                        </span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Botão de ação para logs MISSED — bifurca por tipo */}
+                  {log.status === 'MISSED' && (
+                    logType === 'CHECK' ? (
+                      <button
+                        onClick={() => onCompleteMissedCheck(log.id)}
+                        className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Concluir agora
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onRecoverMissed(log.id, log.activityId)}
+                        className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                      >
+                        <PlayCircle className="h-4 w-4" />
+                        Executar Atrasado
+                      </button>
+                    )
+                  )}
                 </div>
-                
-                {/* Botão de recuperação para atividades perdidas */}
-                {log.status === 'MISSED' && (
-                  <button
-                    onClick={() => onRecoverMissed(log.id, log.activityId)}
-                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    <PlayCircle className="h-4 w-4" />
-                    Executar Atrasado
-                  </button>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       ))}

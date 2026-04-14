@@ -4,18 +4,20 @@ Aplicação web para trabalhadores remotos que querem organizar pausas e hobbies
 
 ## Funcionalidades
 
-- Cadastro de atividades com nome, dias da semana, janela de horário e duração
+- Dois tipos de atividade: **Timer** (foco com contagem regressiva) e **Check** (hábito pontual sem duração)
+- Cadastro de atividades com nome, tipo, dias da semana e janela de horário
 - Notificações push aleatórias dentro da janela configurada
-- Modo Foco: timer de contagem regressiva em tela cheia com progresso circular
-- Histórico de atividades realizadas e perdidas
-- Execução em atraso: atividades perdidas podem ser feitas fora do horário
+- **Timer:** Modo Foco em tela cheia com progresso circular, pause/resume e controles de ajuste de tempo (+/-)
+- **Check:** Modal de confirmação ao clicar na notificação; botão "Concluir" direto no card
+- Histórico de atividades com status Realizado, Perdido e recuperação em atraso
+- Atividades perdidas do tipo Timer abrem o Modo Foco; do tipo Check registram conclusão diretamente
 - 100% client-side — nenhum dado sai do seu navegador (localStorage)
 
 ## Tecnologias
 
 | Camada | Tecnologia |
 |---|---|
-| Framework | [Next.js 15](https://nextjs.org) (App Router) |
+| Framework | [Next.js 16](https://nextjs.org) (App Router) |
 | UI | React 19 |
 | Estilização | Tailwind CSS v4 |
 | Componentes | shadcn/ui (Radix UI) |
@@ -62,18 +64,26 @@ npm run lint   # Verifica o código com ESLint
   └── globals.css         # Variáveis de tema e estilos globais
 
 /components/respiro
-  ├── ActivityForm.jsx    # Formulário de cadastro de atividades
-  ├── ActivityList.jsx    # Grade de cards de atividades
-  ├── ActivityCard.jsx    # Card individual de atividade
-  ├── FocusTimer.jsx      # Timer em tela cheia (Modo Foco)
-  └── ActivityHistory.jsx # Histórico de logs com opção de reexecução
+  ├── ActivityForm.jsx        # Formulário de cadastro e edição (modal) com seletor Timer/Check
+  ├── ActivityList.jsx        # Grade de cards de atividades
+  ├── ActivityCard.jsx        # Card com ações de iniciar/concluir, editar e excluir por tipo
+  ├── FocusTimer.jsx          # Timer em tela cheia com controles +/- de tempo (Modo Foco)
+  ├── ActivityHistory.jsx     # Histórico de logs com recuperação por tipo de atividade
+  └── CheckCompletionModal.jsx # Modal de confirmação para atividades Check via notificação
 
 /hooks
-  └── useNotificationScheduler.js  # Agendamento aleatório e detecção de perdidas
+  └── useNotificationScheduler.js  # Agendamento aleatório, detecção de perdidas e roteamento por tipo
 ```
+
+## Tipos de atividade
+
+| Tipo | Descrição | CTA no card | Ao clicar na notificação | Recuperação no histórico |
+|---|---|---|---|---|
+| **Timer** | Atividade de foco com duração definida | "Iniciar Agora" → Modo Foco | Abre o Modo Foco | "Executar Atrasado" → Modo Foco |
+| **Check** | Hábito pontual sem duração | "Concluir" → log imediato | Modal "Você realizou?" | "Concluir agora" → log imediato |
 
 ## Como funciona o agendamento
 
-Quando a janela de horário de uma atividade se abre, o hook `useNotificationScheduler` sorteia um momento aleatório dentro do tempo restante e agenda uma notificação via `setTimeout`. Clicar na notificação abre o Modo Foco diretamente.
+Quando a janela de horário de uma atividade se abre, o hook `useNotificationScheduler` sorteia um momento aleatório dentro do tempo restante e agenda uma notificação via `setTimeout`. Ao clicar na notificação, o sistema roteia para o Modo Foco (Timer) ou para o modal de confirmação (Check).
 
 Se a janela fechar sem que a atividade tenha sido feita, um registro `MISSED` é criado automaticamente no histórico.
