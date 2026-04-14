@@ -17,6 +17,8 @@ node_modules/
 
 # Claude Code
 .claude/
+CLAUDE.md
+.mcp.json
 
 # Lock files de outros gerenciadores (projeto usa npm)
 pnpm-lock.yaml
