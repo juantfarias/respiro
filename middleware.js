@@ -12,7 +12,7 @@ import { createClient } from '@/utils/supabase/middleware'
  *
  * @param {import('next/server').NextRequest} request
  */
-export async function proxy(request) {
+export async function middleware(request) {
   const { supabase, response } = createClient(request)
 
   // Renova o token e lê o usuário autenticado.
