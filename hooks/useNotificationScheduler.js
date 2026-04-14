@@ -12,8 +12,9 @@ import { useEffect, useRef, useCallback } from 'react'
  * @param {Array} historyLogs - Lista de logs do histórico
  * @param {Object|null} focusActivity - Atividade atualmente em modo foco (null se nenhuma)
  * @param {Function} onShowCheckModal - Callback para exibir o modal de confirmação (atividades CHECK)
+ * @param {boolean} isFetching - Se true, aguarda o carregamento dos dados antes de iniciar o agendamento
  */
-export function useNotificationScheduler(activities, onStartFocus, onAddMissedLog, historyLogs, focusActivity, onShowCheckModal) {
+export function useNotificationScheduler(activities, onStartFocus, onAddMissedLog, historyLogs, focusActivity, onShowCheckModal, isFetching = false) {
   // Referência para os timeouts agendados
   const scheduledTimeouts = useRef(new Map())
 
@@ -211,6 +212,9 @@ export function useNotificationScheduler(activities, onStartFocus, onAddMissedLo
     clearAtMidnight()
 
     const checkAndSchedule = () => {
+      // RN03: aguarda carregamento dos dados do Supabase antes de agendar
+      if (isFetching) return
+
       // BR3: focus lock — não agenda novas notificações durante sessão de foco
       if (focusActiveRef.current) return
 
@@ -252,7 +256,7 @@ export function useNotificationScheduler(activities, onStartFocus, onAddMissedLo
       scheduledTimeouts.current.forEach((timeoutId) => clearTimeout(timeoutId))
       scheduledTimeouts.current.clear()
     }
-  }, [activities, historyLogs, isWindowActive, hasWindowPassed, hasCompletedLogForDate, hasLogForDate, onAddMissedLog, requestNotificationPermission, scheduleRandomNotification])
+  }, [activities, historyLogs, isFetching, isWindowActive, hasWindowPassed, hasCompletedLogForDate, hasLogForDate, onAddMissedLog, requestNotificationPermission, scheduleRandomNotification])
 
   // Efeito para limpar timeouts de atividades removidas
   useEffect(() => {
