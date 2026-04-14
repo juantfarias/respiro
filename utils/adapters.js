@@ -34,7 +34,7 @@ export function dbToActivity(row) {
 
 /**
  * Converte o objeto de atividade dos componentes para o payload de INSERT/UPDATE.
- * O campo `user_id` é inferido pelo banco via RLS (auth.uid()) — não incluído aqui.
+ * Não inclui `user_id` — deve ser injetado no call site via supabase.auth.getUser().
  *
  * @param {{
  *   name: string,
@@ -85,7 +85,7 @@ export function dbToLog(row) {
 
 /**
  * Converte o objeto de log dos componentes para o payload de INSERT.
- * O campo `user_id` é inferido pelo banco via RLS (auth.uid()) — não incluído aqui.
+ * Não inclui `user_id` — deve ser injetado no call site via supabase.auth.getUser().
  *
  * @param {{
  *   activityId: string | null,

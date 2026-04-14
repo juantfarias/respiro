@@ -21,6 +21,7 @@ import {
 export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), [])
 
+  const [userId, setUserId] = useState(null)
   const [activities, setActivities] = useState([])
   const [historyLogs, setHistoryLogs] = useState([])
   const [isFetching, setIsFetching] = useState(true)
@@ -35,6 +36,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function loadData() {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserId(user?.id ?? null)
+
       const [activitiesRes, logsRes] = await Promise.all([
         supabase.from('activities').select('*').order('created_at', { ascending: true }),
         supabase.from('history_logs').select('*').order('executed_at', { ascending: false }),
@@ -73,19 +77,22 @@ export default function DashboardPage() {
   const handleAddActivity = useCallback(async (formData) => {
     closeForm()
 
+    const payload = { ...activityToDb(formData), user_id: userId }
+
     const { data, error } = await supabase
       .from('activities')
-      .insert(activityToDb(formData))
+      .insert(payload)
       .select()
       .single()
 
     if (error) {
-      toast.error('Não foi possível salvar a atividade.')
+      console.error('[handleAddActivity] Supabase error:', error)
+      toast.error(`Erro ao salvar: ${error.message}`)
       return
     }
 
     setActivities(prev => [...prev, dbToActivity(data)])
-  }, [supabase, closeForm])
+  }, [supabase, closeForm, userId])
 
   /**
    * Atualiza atividade com optimistic update.
@@ -154,13 +161,14 @@ export default function DashboardPage() {
 
     const { data, error } = await supabase
       .from('history_logs')
-      .insert(logToDb(logData))
+      .insert({ ...logToDb(logData), user_id: userId })
       .select()
       .single()
 
     if (error) {
+      console.error('[insertLog] Supabase error:', error)
       setHistoryLogs(prev => prev.filter(l => l.id !== tempId))
-      toast.error('Sem conexão com o servidor. Ação não registrada.')
+      toast.error(`Sem conexão com o servidor: ${error.message}`)
       return null
     }
 
@@ -168,7 +176,7 @@ export default function DashboardPage() {
     const serverLog = dbToLog(data)
     setHistoryLogs(prev => prev.map(l => l.id === tempId ? serverLog : l))
     return serverLog.id
-  }, [supabase])
+  }, [supabase, userId])
 
   // ─── Handlers de log ─────────────────────────────────────────────────────
 
