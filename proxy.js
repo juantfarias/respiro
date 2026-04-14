@@ -22,7 +22,7 @@ export async function proxy(request) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/auth')
 
   // Usuário logado tentando acessar rota de auth → dashboard
   if (user && isAuthRoute) {
