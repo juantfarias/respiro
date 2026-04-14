@@ -17,3 +17,7 @@ node_modules/
 
 # Claude Code
 .claude/
+
+# Lock files de outros gerenciadores (projeto usa npm)
+pnpm-lock.yaml
+yarn.lock
