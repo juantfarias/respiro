@@ -30,7 +30,7 @@ Aplicação web para trabalhadores remotos que querem organizar pausas e hobbies
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/seu-usuario/respiro.git
+git clone https://github.com/juantfarias/respiro.git
 cd respiro
 
 # 2. Instale as dependências
