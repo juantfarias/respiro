@@ -2,8 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { Suspense } from 'react'
-import { useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
@@ -24,6 +23,19 @@ function LoginForm() {
   const [googleLoading, setGoogleLoading] = useState(false)
 
   const supabase = createClient()
+
+  // Listener de estado de autenticação.
+  // Necessário para capturar o evento SIGNED_IN disparado pelo Supabase
+  // quando o usuário retorna do fluxo OAuth (Google), já que nesse caso
+  // a página é remontada sem passar pelo handleEmailLogin/handleGoogleLogin.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        router.push(next)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [supabase, router, next])
 
   /** @param {React.FormEvent} e */
   async function handleEmailLogin(e) {
