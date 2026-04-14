@@ -1,4 +1,5 @@
 import { Geist } from 'next/font/google'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 const geist = Geist({ subsets: ["latin"] })
@@ -13,6 +14,7 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR" className="bg-background">
       <body className={`${geist.className} antialiased`}>
         {children}
+        <Toaster richColors position="bottom-right" />
       </body>
     </html>
   )
