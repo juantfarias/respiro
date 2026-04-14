@@ -3,7 +3,7 @@
 import { Wind } from 'lucide-react'
 import ActivityCard from './ActivityCard'
 
-export default function ActivityList({ activities, onDelete, onStartFocus }) {
+export default function ActivityList({ activities, onDelete, onStartFocus, onEdit }) {
   // Renderiza mensagem quando não há atividades
   if (activities.length === 0) {
     return (
@@ -34,6 +34,7 @@ export default function ActivityList({ activities, onDelete, onStartFocus }) {
             activity={activity}
             onDelete={onDelete}
             onStartFocus={onStartFocus}
+            onEdit={onEdit}
           />
         ))}
       </div>

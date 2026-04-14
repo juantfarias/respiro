@@ -1,12 +1,18 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Wind, ListTodo, History } from 'lucide-react'
-import ActivityForm from '@/components/respiro/ActivityForm'
+import { Wind, ListTodo, History, Plus } from 'lucide-react'
 import ActivityList from '@/components/respiro/ActivityList'
 import ActivityHistory from '@/components/respiro/ActivityHistory'
 import FocusTimer from '@/components/respiro/FocusTimer'
+import ActivityForm from '@/components/respiro/ActivityForm'
 import { useNotificationScheduler } from '@/hooks/useNotificationScheduler'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 // Chaves para persistência no localStorage
 const STORAGE_KEY = 'respiro_activities'
@@ -15,39 +21,38 @@ const HISTORY_KEY = 'respiro_history'
 export default function Home() {
   // Estado das atividades cadastradas
   const [activities, setActivities] = useState([])
-  
+
   // Estado do histórico de logs
   const [historyLogs, setHistoryLogs] = useState([])
-  
+
   // Estado do modo foco (atividade ativa no timer)
   const [focusActivity, setFocusActivity] = useState(null)
-  
+
   // Estado para rastrear se estamos executando uma atividade atrasada
   const [recoveryLogId, setRecoveryLogId] = useState(null)
-  
-  // Controla se o formulário está visível
-  const [showForm, setShowForm] = useState(false)
-  
+
   // Estado da aba ativa: 'activities' ou 'history'
   const [activeTab, setActiveTab] = useState('activities')
+
+  // Controle do modal de cadastro/edição
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingActivity, setEditingActivity] = useState(null)
 
   // Carrega atividades do localStorage na montagem do componente
   useEffect(() => {
     const storedActivities = localStorage.getItem(STORAGE_KEY)
     if (storedActivities) {
       try {
-        const parsed = JSON.parse(storedActivities)
-        setActivities(parsed)
+        setActivities(JSON.parse(storedActivities))
       } catch (error) {
         console.error('Erro ao carregar atividades:', error)
       }
     }
-    
+
     const storedHistory = localStorage.getItem(HISTORY_KEY)
     if (storedHistory) {
       try {
-        const parsed = JSON.parse(storedHistory)
-        setHistoryLogs(parsed)
+        setHistoryLogs(JSON.parse(storedHistory))
       } catch (error) {
         console.error('Erro ao carregar histórico:', error)
       }
@@ -58,21 +63,33 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(activities))
   }, [activities])
-  
+
   // Persiste histórico no localStorage sempre que mudar
   useEffect(() => {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(historyLogs))
   }, [historyLogs])
 
+  // Fecha o modal e limpa o estado de edição
+  const closeForm = useCallback(() => {
+    setIsFormOpen(false)
+    setEditingActivity(null)
+  }, [])
+
   // Função para adicionar nova atividade
   const handleAddActivity = useCallback((newActivity) => {
     const activityWithId = {
       ...newActivity,
-      id: Date.now().toString(), // ID único baseado em timestamp
+      id: Date.now().toString(),
     }
     setActivities(prev => [...prev, activityWithId])
-    setShowForm(false)
-  }, [])
+    closeForm()
+  }, [closeForm])
+
+  // Função para editar atividade existente
+  const handleEditActivity = useCallback((updatedActivity) => {
+    setActivities(prev => prev.map(a => a.id === updatedActivity.id ? updatedActivity : a))
+    closeForm()
+  }, [closeForm])
 
   // Função para excluir atividade
   const handleDeleteActivity = useCallback((id) => {
@@ -83,7 +100,7 @@ export default function Home() {
   const handleStartFocus = useCallback((activity) => {
     setFocusActivity(activity)
   }, [])
-  
+
   // Função para iniciar execução de atividade atrasada (MISSED)
   const handleRecoverMissed = useCallback((logId, activityId) => {
     const activity = activities.find(a => a.id === activityId)
@@ -96,16 +113,14 @@ export default function Home() {
   // Função para finalizar o modo foco
   const handleEndFocus = useCallback((completed = false) => {
     if (completed && focusActivity) {
-      // Se estamos recuperando uma atividade MISSED, atualiza o log existente
       if (recoveryLogId) {
-        setHistoryLogs(prev => prev.map(log => 
-          log.id === recoveryLogId 
+        setHistoryLogs(prev => prev.map(log =>
+          log.id === recoveryLogId
             ? { ...log, status: 'COMPLETED' }
             : log
         ))
         setRecoveryLogId(null)
       } else {
-        // Cria um novo log de COMPLETED
         const newLog = {
           id: Date.now().toString(),
           activityId: focusActivity.id,
@@ -117,12 +132,11 @@ export default function Home() {
         setHistoryLogs(prev => [newLog, ...prev])
       }
     } else {
-      // Se cancelou, limpa o recoveryLogId sem alterar nada
       setRecoveryLogId(null)
     }
     setFocusActivity(null)
   }, [focusActivity, recoveryLogId])
-  
+
   // Função para adicionar log de MISSED (chamada pelo hook)
   const handleAddMissedLog = useCallback((activity, date) => {
     const newLog = {
@@ -134,10 +148,9 @@ export default function Home() {
       duration: activity.duration,
     }
     setHistoryLogs(prev => {
-      // Evita duplicatas verificando se já existe um log para essa atividade nessa data
       const dateStr = new Date(date).toDateString()
-      const exists = prev.some(log => 
-        log.activityId === activity.id && 
+      const exists = prev.some(log =>
+        log.activityId === activity.id &&
         new Date(log.date).toDateString() === dateStr
       )
       if (exists) return prev
@@ -151,8 +164,8 @@ export default function Home() {
   // Se estiver no modo foco, renderiza apenas o timer
   if (focusActivity) {
     return (
-      <FocusTimer 
-        activity={focusActivity} 
+      <FocusTimer
+        activity={focusActivity}
         onFinish={() => handleEndFocus(true)}
         onCancel={() => handleEndFocus(false)}
       />
@@ -164,7 +177,7 @@ export default function Home() {
     <main className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
               <Wind className="h-5 w-5 text-primary-foreground" />
@@ -175,10 +188,18 @@ export default function Home() {
                 Gerencie suas pausas e hobbies
               </p>
             </div>
+            {/* Botão Nova Atividade no header */}
+            <button
+              onClick={() => setIsFormOpen(true)}
+              className="ml-auto flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              Nova Atividade
+            </button>
           </div>
         </div>
       </header>
-      
+
       {/* Tabs de navegação */}
       <div className="border-b border-border bg-card">
         <div className="container mx-auto px-4">
@@ -212,41 +233,44 @@ export default function Home() {
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-8">
         {activeTab === 'activities' ? (
-          <>
-            {/* Botão para mostrar/esconder formulário */}
-            {!showForm && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="mb-6 w-full rounded-lg border-2 border-dashed border-border bg-card p-4 text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-              >
-                + Adicionar nova atividade
-              </button>
-            )}
-
-            {/* Formulário de cadastro */}
-            {showForm && (
-              <div className="mb-6">
-                <ActivityForm 
-                  onSubmit={handleAddActivity}
-                  onCancel={() => setShowForm(false)}
-                />
-              </div>
-            )}
-
-            {/* Lista de atividades */}
-            <ActivityList 
-              activities={activities}
-              onDelete={handleDeleteActivity}
-              onStartFocus={handleStartFocus}
-            />
-          </>
+          <ActivityList
+            activities={activities}
+            onDelete={handleDeleteActivity}
+            onStartFocus={handleStartFocus}
+            onEdit={(activity) => {
+              setEditingActivity(activity)
+              setIsFormOpen(true)
+            }}
+          />
         ) : (
-          <ActivityHistory 
+          <ActivityHistory
             logs={historyLogs}
             onRecoverMissed={handleRecoverMissed}
           />
         )}
       </div>
+
+      {/* Modal de cadastro / edição */}
+      <Dialog
+        open={isFormOpen}
+        onOpenChange={(open) => {
+          if (!open) closeForm()
+          else setIsFormOpen(true)
+        }}
+      >
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>
+              {editingActivity ? 'Editar Atividade' : 'Nova Atividade'}
+            </DialogTitle>
+          </DialogHeader>
+          <ActivityForm
+            initialData={editingActivity}
+            onSubmit={editingActivity ? handleEditActivity : handleAddActivity}
+            onCancel={closeForm}
+          />
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

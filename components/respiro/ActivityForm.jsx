@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Plus } from 'lucide-react'
+import { Plus, Save } from 'lucide-react'
 
 // Dias da semana para os checkboxes
 const WEEKDAYS = [
@@ -14,14 +14,16 @@ const WEEKDAYS = [
   { id: 6, label: 'Sáb', name: 'sábado' },
 ]
 
-export default function ActivityForm({ onSubmit, onCancel }) {
-  // Estado do formulário
+export default function ActivityForm({ onSubmit, onCancel, initialData }) {
+  const isEditing = !!initialData
+
+  // Estado do formulário — pré-preenchido quando em modo edição
   const [formData, setFormData] = useState({
-    name: '',
-    days: [], // Array de IDs dos dias selecionados
-    startTime: '09:00',
-    endTime: '11:00',
-    duration: 30,
+    name: initialData?.name ?? '',
+    days: initialData?.days ?? [],
+    startTime: initialData?.startTime ?? '09:00',
+    endTime: initialData?.endTime ?? '11:00',
+    duration: initialData?.duration ?? 30,
   })
 
   // Estado de erros de validação
@@ -31,7 +33,6 @@ export default function ActivityForm({ onSubmit, onCancel }) {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    // Limpa erro do campo ao digitar
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }))
     }
@@ -42,8 +43,8 @@ export default function ActivityForm({ onSubmit, onCancel }) {
     setFormData(prev => ({
       ...prev,
       days: prev.days.includes(dayId)
-        ? prev.days.filter(d => d !== dayId) // Remove se já está selecionado
-        : [...prev.days, dayId] // Adiciona se não está selecionado
+        ? prev.days.filter(d => d !== dayId)
+        : [...prev.days, dayId]
     }))
     if (errors.days) {
       setErrors(prev => ({ ...prev, days: null }))
@@ -70,7 +71,6 @@ export default function ActivityForm({ onSubmit, onCancel }) {
       newErrors.endTime = 'Horário de fim é obrigatório'
     }
 
-    // Verifica se o horário de fim é maior que o de início
     if (formData.startTime && formData.endTime && formData.startTime >= formData.endTime) {
       newErrors.endTime = 'Horário de fim deve ser maior que o de início'
     }
@@ -79,12 +79,11 @@ export default function ActivityForm({ onSubmit, onCancel }) {
       newErrors.duration = 'Duração deve ser de pelo menos 1 minuto'
     }
 
-    // Verifica se a duração não excede a janela de tempo
     if (formData.startTime && formData.endTime && formData.duration) {
       const [startHour, startMin] = formData.startTime.split(':').map(Number)
       const [endHour, endMin] = formData.endTime.split(':').map(Number)
       const windowMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin)
-      
+
       if (formData.duration > windowMinutes) {
         newErrors.duration = 'Duração não pode exceder a janela de tempo'
       }
@@ -97,11 +96,12 @@ export default function ActivityForm({ onSubmit, onCancel }) {
   // Handler do submit
   const handleSubmit = (e) => {
     e.preventDefault()
-    
+
     if (validate()) {
       onSubmit({
+        ...(initialData ?? {}),
         name: formData.name.trim(),
-        days: formData.days.sort((a, b) => a - b), // Ordena os dias
+        days: formData.days.sort((a, b) => a - b),
         startTime: formData.startTime,
         endTime: formData.endTime,
         duration: parseInt(formData.duration, 10),
@@ -110,21 +110,7 @@ export default function ActivityForm({ onSubmit, onCancel }) {
   }
 
   return (
-    <form 
-      onSubmit={handleSubmit}
-      className="rounded-lg border border-border bg-card p-6 shadow-sm"
-    >
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Nova Atividade</h2>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Campo: Nome da Atividade */}
       <div className="mb-4">
         <label htmlFor="name" className="mb-2 block text-sm font-medium text-foreground">
@@ -239,8 +225,17 @@ export default function ActivityForm({ onSubmit, onCancel }) {
           type="submit"
           className="flex flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          <Plus className="h-4 w-4" />
-          Adicionar
+          {isEditing ? (
+            <>
+              <Save className="h-4 w-4" />
+              Salvar
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4" />
+              Adicionar
+            </>
+          )}
         </button>
       </div>
     </form>

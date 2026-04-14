@@ -1,23 +1,23 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Wind, Check, X, Pause, Play } from 'lucide-react'
+import { Wind, Check, X, Pause, Play, Plus, Minus } from 'lucide-react'
 
 export default function FocusTimer({ activity, onFinish, onCancel }) {
   // Tempo restante em segundos
   const [timeLeft, setTimeLeft] = useState(activity.duration * 60)
-  
+
   // Estado se o timer está rodando ou pausado
   const [isRunning, setIsRunning] = useState(true)
-  
+
   // Estado de conclusão
   const [isCompleted, setIsCompleted] = useState(false)
-  
+
+  // Valor de ajuste em segundos (controles +/-)
+  const [adjustSeconds, setAdjustSeconds] = useState(10)
+
   // Referência para o intervalo
   const intervalRef = useRef(null)
-  
-  // Referência para o elemento de áudio
-  const audioRef = useRef(null)
 
   // Formata o tempo em MM:SS
   const formatTime = (seconds) => {
@@ -32,24 +32,23 @@ export default function FocusTimer({ activity, onFinish, onCancel }) {
   // Função para tocar som de conclusão
   const playCompletionSound = useCallback(() => {
     try {
-      // Cria um contexto de áudio para tocar um som simples
       const audioContext = new (window.AudioContext || window.webkitAudioContext)()
       const oscillator = audioContext.createOscillator()
       const gainNode = audioContext.createGain()
-      
+
       oscillator.connect(gainNode)
       gainNode.connect(audioContext.destination)
-      
-      oscillator.frequency.value = 800 // Frequência do tom
+
+      oscillator.frequency.value = 800
       oscillator.type = 'sine'
-      
+
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-      
+
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + 0.5)
     } catch (error) {
-      console.log('Não foi possível tocar o som:', error)
+      // Áudio não disponível — sem impacto funcional
     }
   }, [])
 
@@ -92,6 +91,17 @@ export default function FocusTimer({ activity, onFinish, onCancel }) {
     playCompletionSound()
   }
 
+  // Handler para ajustar o tempo (+/-)
+  const handleAdjust = (delta) => {
+    setTimeLeft(prev => Math.max(0, prev + delta))
+  }
+
+  // Handler para o input de ajuste
+  const handleAdjustInput = (e) => {
+    const val = parseInt(e.target.value, 10)
+    if (!isNaN(val) && val > 0) setAdjustSeconds(val)
+  }
+
   // Se completou, mostra tela de sucesso
   if (isCompleted) {
     return (
@@ -127,8 +137,8 @@ export default function FocusTimer({ activity, onFinish, onCancel }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="flex w-full max-w-md flex-col items-center text-center">
-        {/* Header com nome da atividade */}
-        <div className="mb-8">
+        {/* Header com nome da atividade — flex para centralizar o ícone */}
+        <div className="mb-8 flex flex-col items-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Wind className="h-8 w-8 text-primary" />
           </div>
@@ -141,8 +151,7 @@ export default function FocusTimer({ activity, onFinish, onCancel }) {
         </div>
 
         {/* Timer circular */}
-        <div className="relative mb-8">
-          {/* SVG do círculo de progresso */}
+        <div className="relative mb-6">
           <svg className="h-64 w-64 -rotate-90 transform">
             {/* Círculo de fundo */}
             <circle
@@ -168,7 +177,7 @@ export default function FocusTimer({ activity, onFinish, onCancel }) {
               strokeDashoffset={`${2 * Math.PI * 120 * (1 - progressPercent / 100)}`}
             />
           </svg>
-          
+
           {/* Tempo no centro */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-5xl font-bold tabular-nums text-foreground">
@@ -178,6 +187,32 @@ export default function FocusTimer({ activity, onFinish, onCancel }) {
               {isRunning ? 'restantes' : 'pausado'}
             </span>
           </div>
+        </div>
+
+        {/* Controles de ajuste de tempo */}
+        <div className="mb-6 flex items-center gap-2">
+          <button
+            onClick={() => handleAdjust(-adjustSeconds)}
+            className="flex items-center justify-center rounded-lg border border-border bg-card p-2 text-foreground transition-colors hover:bg-accent"
+            aria-label="Diminuir tempo"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <input
+            type="number"
+            value={adjustSeconds}
+            onChange={handleAdjustInput}
+            min="1"
+            className="w-16 rounded-md border border-input bg-background px-2 py-1.5 text-center text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="text-xs text-muted-foreground">s</span>
+          <button
+            onClick={() => handleAdjust(adjustSeconds)}
+            className="flex items-center justify-center rounded-lg border border-border bg-card p-2 text-foreground transition-colors hover:bg-accent"
+            aria-label="Aumentar tempo"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Botões de controle */}

@@ -1,11 +1,11 @@
 'use client'
 
-import { Trash2, Play, Clock, Calendar } from 'lucide-react'
+import { Trash2, Play, Clock, Calendar, Pencil } from 'lucide-react'
 
 // Mapeamento de IDs para labels dos dias
 const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-export default function ActivityCard({ activity, onDelete, onStartFocus }) {
+export default function ActivityCard({ activity, onDelete, onStartFocus, onEdit }) {
   // Formata a lista de dias selecionados
   const formattedDays = activity.days
     .map(dayId => DAY_LABELS[dayId])
@@ -20,7 +20,14 @@ export default function ActivityCard({ activity, onDelete, onStartFocus }) {
 
   return (
     <div className="group relative rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
-      {/* Botão de deletar */}
+      {/* Botões de ação (visíveis no hover) */}
+      <button
+        onClick={() => onEdit(activity)}
+        className="absolute right-9 top-2 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+        aria-label={`Editar ${activity.name}`}
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
       <button
         onClick={handleDelete}
         className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
@@ -30,7 +37,7 @@ export default function ActivityCard({ activity, onDelete, onStartFocus }) {
       </button>
 
       {/* Nome da atividade */}
-      <h3 className="mb-3 pr-8 text-base font-semibold text-foreground">
+      <h3 className="mb-3 pr-16 text-base font-semibold text-foreground">
         {activity.name}
       </h3>
 
