@@ -4,7 +4,25 @@
  *
  * DB  →  App:  dbToActivity / dbToLog
  * App →  DB:   activityToDb / logToDb
+ * Helpers:     getNextScheduledDay
  */
+
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+/**
+ * Retorna o label (ex: "Seg") do próximo dia agendado após hoje.
+ * Se todos os dias já passaram na semana, retorna o primeiro da lista (próxima semana).
+ *
+ * @param {number[]} days - Array de IDs de dia (0=Dom, 6=Sáb)
+ * @returns {string | null}
+ */
+export function getNextScheduledDay(days) {
+  if (!days?.length) return null
+  const today = new Date().getDay()
+  const sorted = [...days].sort((a, b) => a - b)
+  const next = sorted.find(d => d > today) ?? sorted[0]
+  return DAY_LABELS[next]
+}
 
 /**
  * Converte uma linha da tabela `activities` para o formato dos componentes.

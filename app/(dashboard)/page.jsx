@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { createClient } from '@/utils/supabase/client'
 import { dbToActivity, activityToDb, dbToLog, logToDb } from '@/utils/adapters'
+
 import DashboardHeader from '@/components/respiro/DashboardHeader'
 import ActivityList from '@/components/respiro/ActivityList'
 import ActivityHistory from '@/components/respiro/ActivityHistory'
@@ -318,6 +319,39 @@ export default function DashboardPage() {
     isFetching,
   )
 
+  // ─── Categorização de atividades ─────────────────────────────────────────
+
+  const { pendingToday, futureOrCompleted } = useMemo(() => {
+    const todayDow = new Date().getDay()
+    const todayStr = new Date().toDateString()
+
+    const completedTodayIds = new Set(
+      historyLogs
+        .filter(log =>
+          ['COMPLETED', 'DONE'].includes(log.status) &&
+          new Date(log.date).toDateString() === todayStr
+        )
+        .map(log => log.activityId)
+    )
+
+    const pending = []
+    const rest = []
+
+    activities.forEach(activity => {
+      const isScheduledForToday = activity.days.includes(todayDow)
+      const isCompletedToday = completedTodayIds.has(activity.id)
+      const enriched = { ...activity, isScheduledForToday, isCompletedToday }
+
+      if (isScheduledForToday && !isCompletedToday) {
+        pending.push(enriched)
+      } else {
+        rest.push(enriched)
+      }
+    })
+
+    return { pendingToday: pending, futureOrCompleted: rest }
+  }, [activities, historyLogs])
+
   // ─── Render ──────────────────────────────────────────────────────────────
 
   if (focusActivity) {
@@ -347,7 +381,8 @@ export default function DashboardPage() {
           </div>
         ) : activeTab === 'activities' ? (
           <ActivityList
-            activities={activities}
+            pendingToday={pendingToday}
+            futureOrCompleted={futureOrCompleted}
             onDelete={handleDeleteActivity}
             onStartFocus={handleStartFocus}
             onEdit={(activity) => {
