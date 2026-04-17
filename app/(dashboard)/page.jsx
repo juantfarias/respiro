@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ListTodo, History, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/utils/supabase/client'
 import { dbToActivity, activityToDb, dbToLog, logToDb } from '@/utils/adapters'
+import DashboardHeader from '@/components/respiro/DashboardHeader'
 import ActivityList from '@/components/respiro/ActivityList'
 import ActivityHistory from '@/components/respiro/ActivityHistory'
 import FocusTimer from '@/components/respiro/FocusTimer'
@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), [])
 
   const [userId, setUserId] = useState(null)
+  const [user, setUser] = useState(null)
   const [activities, setActivities] = useState([])
   const [historyLogs, setHistoryLogs] = useState([])
   const [isFetching, setIsFetching] = useState(true)
@@ -38,6 +39,9 @@ export default function DashboardPage() {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
       setUserId(user?.id ?? null)
+
+      const { data: authData } = await supabase.auth.getUser()
+      if (authData?.user) setUser(authData.user)
 
       const [activitiesRes, logsRes] = await Promise.all([
         supabase.from('activities').select('*').order('created_at', { ascending: true }),
@@ -328,44 +332,12 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Barra de abas + botão Nova Atividade */}
-      <div className="border-b border-border bg-card">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-1">
-              <button
-                onClick={() => setActiveTab('activities')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                  activeTab === 'activities'
-                    ? 'border-primary text-foreground'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <ListTodo className="h-4 w-4" />
-                Minhas Atividades
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                  activeTab === 'history'
-                    ? 'border-primary text-foreground'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <History className="h-4 w-4" />
-                Histórico
-              </button>
-            </div>
-            <button
-              onClick={() => setIsFormOpen(true)}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              Nova Atividade
-            </button>
-          </div>
-        </div>
-      </div>
+      <DashboardHeader
+        user={user}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onNewActivity={() => setIsFormOpen(true)}
+      />
 
       {/* Conteúdo */}
       <div className="container mx-auto px-4 py-8">
