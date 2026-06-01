@@ -2,6 +2,21 @@
 
 Aplicação web para trabalhadores remotos que querem organizar pausas e hobbies sem deixar a rotina dominar o dia. O Respiro agenda lembretes aleatórios dentro de janelas de tempo configuradas, incentivando você a sair da tela e fazer o que gosta.
 
+## Demo
+
+Acesse a versão ao vivo sem precisar instalar nada:
+
+**[https://respiro-remote.vercel.app](https://respiro-remote.vercel.app)**
+
+Conta de demonstração:
+
+| Campo | Valor |
+|---|---|
+| E-mail | `admin@respiro.com` |
+| Senha | `admin@respiro` |
+
+---
+
 ## Funcionalidades
 
 - Autenticação com e-mail/senha ou Google OAuth
