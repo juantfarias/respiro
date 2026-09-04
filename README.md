@@ -1,6 +1,6 @@
 # Respiro
 
-Aplicação web para trabalhadores remotos que querem organizar pausas e hobbies sem deixar a rotina dominar o dia. O Respiro agenda lembretes aleatórios dentro de janelas de tempo configuradas, incentivando você a sair da tela e fazer o que gosta.
+Aplicação web para trabalhadores remotos que querem organizar pausas pontuais. O Respiro agenda lembretes aleatórios dentro de janelas de tempo configuradas, relembrando você de atividades essenciais em meio a rotina de trabalho..
 
 ## Demo
 
